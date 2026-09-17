@@ -111,3 +111,4 @@ telco_core_performance_profile_worker_1_system_reserved_memory: 3Gi
 telco_core_performance_profile_worker_2_system_reserved_memory: 3Gi
 telco_core_performance_profile_worker_3_system_reserved_memory: 3Gi
 
+acs_operator_containers_target_count: 50
