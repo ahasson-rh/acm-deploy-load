@@ -40,7 +40,16 @@ This playbook performs the following operations on all managed clusters:
    - Downloads latest vulnerability database from ACS Central
    - Uploads to ACS Central
 
-2. **Register Spokes with ACS Central** (main operation)
+2. **Configure Bastion Registry Access** (optional, tagged `bastion-registry`)
+   - Captures bastion registry TLS certificate via OpenSSL
+   - Injects certificate into spoke as a ConfigMap
+   - Updates image config to trust the bastion CA
+   - Appends bastion registry credentials to spoke pull secret
+   - Monitors machineconfig rollout for node updates
+   - Tests connectivity with a pod deployment from bastion registry
+   - Only runs when `acs_spoke_use_bastion_registry` variable is `true`
+
+3. **Register Spokes with ACS Central** (main operation)
    - Generates a Cluster Registration Secret (CRS) if needed
    - Caches CRS across spoke namespaces on the hub
    - Detects mismatches and regenerates if necessary
@@ -49,7 +58,7 @@ This playbook performs the following operations on all managed clusters:
      - Creates docker registry secrets for pulling ACS images
      - Applies CRS to register with Central
 
-3. **Deploy Sensors** (main operation)
+4. **Deploy Sensors** (main operation)
    - Generates sensor deployment scripts for each cluster
    - Deploys sensors to spokes
    - Preserves sensor generation directories for later cleanup
@@ -74,6 +83,32 @@ export ROX_API_TOKEN="<your-api-token>"
 export ROX_CENTRAL_ADDRESS="https://$(oc get route central -n rhacs-operator -o jsonpath='{.spec.host}')"
 
 time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-secure-spokes.yml --tags refresh-vulns
+```
+
+#### Configure Bastion Registry with TLS Certificate
+
+To enable bastion registry support for spoke clusters, set `acs_spoke_use_bastion_registry=true` and `bastion_registry_host`:
+
+```bash
+time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-secure-spokes.yml \
+  -e acs_spoke_use_bastion_registry=true \
+  -e bastion_registry_host="<your-bastion-registry-fqdn>" \
+  -e bastion_registry_port=5000 \
+  -e bastion_registry_username="registry" \
+  -e bastion_registry_password="<your-password>" \
+  -e bastion_registry_test_image_source="quay.io/openshift/origin-cli:latest"
+```
+
+To skip bastion registry setup and run only sensor setup:
+
+```bash
+export ROX_API_TOKEN="<your-api-token>"
+export ROX_CENTRAL_ADDRESS="https://$(oc get route central -n rhacs-operator -o jsonpath='{.spec.host}')"
+export RH_REGISTRY_IO_USERNAME="<your-username>"
+export RH_REGISTRY_IO_PASSWORD="<your-password>"
+
+time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-secure-spokes.yml \
+  --skip-tags bastion-registry
 ```
 
 #### Force Sensor Regeneration and Redeployment
@@ -104,6 +139,29 @@ time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-secure-spok
 - Creates stackrox namespace and docker secrets on each spoke
 - Applies CRS to register spoke with Central
 - Idempotent: skips if already registered
+
+#### `acs-spokes-bastion-registry-setup`
+- **Default**: Disabled (requires `acs_spoke_use_bastion_registry=true` and `bastion_registry_host` to be set)
+- Captures bastion registry TLS certificate via OpenSSL from `bastion_registry_host:bastion_registry_port`
+- Creates ConfigMap with certificate in `openshift-config` namespace on each spoke
+- Patches image config to trust the bastion CA via `additionalTrustedCA` setting
+- Extracts spoke's pull secret and appends bastion registry credentials
+- Updates pull secret in `openshift-config` namespace
+- Monitors machineconfig rollout on worker nodes (polls until UPDATING=false, UPDATED=true)
+- Pushes test image to bastion registry (from `bastion_registry_test_image_source`)
+- Tests registry connectivity by deploying a test pod from bastion image
+- Executes configurable test command in pod and validates successful completion
+- Cleans up temporary kubeconfig, pull secret files, and test namespace
+- **Variables**:
+  - `acs_spoke_use_bastion_registry`: Enable bastion registry setup (default: `false`)
+  - `bastion_registry_host`: FQDN of bastion registry (default: `""`, must be set when enabled)
+  - `bastion_registry_port`: Port number (default: `5000`)
+  - `bastion_registry_username`: Registry username (default: `"registry"`)
+  - `bastion_registry_password`: Registry password
+  - `bastion_registry_test_image_source`: Image to pull and push (default: `"quay.io/openshift/origin-cli:latest"`)
+  - `bastion_registry_test_command`: Command to execute in test pod (default: `"echo 'Bastion registry test successful'"`)
+  - `bastion_registry_machineconfig_poll_retries`: MachineConfig poll retries (default: `30`)
+  - `bastion_registry_machineconfig_poll_interval`: MachineConfig poll interval in seconds (default: `10`)
 
 #### `acs-spokes-sensor-setup`
 - Generates sensor deployment scripts per cluster

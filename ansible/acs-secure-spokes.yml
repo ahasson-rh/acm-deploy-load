@@ -27,6 +27,9 @@
         acs_spokes_registration_action: register
       tags:
         - registration
+    - role: acs-spokes-bastion-registry-setup
+      tags:
+        - bastion-registry
     - role: acs-spokes-sensor-setup
       tags:
         - sensor-setup
