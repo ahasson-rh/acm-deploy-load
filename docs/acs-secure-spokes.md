@@ -259,7 +259,7 @@ echo $ROX_CENTRAL_ADDRESS
 
 1. **Always run on managed_clusters group**: Ensure your inventory has clusters under `[managed_clusters]` group
 2. **Preserve sensor directories**: Keep directories unless actively cleaning up; useful for redeployment
-3. **Use tags for selective operations**: Run specific roles using `--tags` to avoid accidental deletions
+3. **Use tags for selective operations**: Use `--skip-tags` to exclude an operation (e.g., `--skip-tags registration`)
 4. **Validate environment before cleanup**: Ensure correct ROX_CENTRAL_ADDRESS before unregistering
 5. **Check CRS status**: CRS mismatches trigger regeneration automatically; no manual intervention needed
 
