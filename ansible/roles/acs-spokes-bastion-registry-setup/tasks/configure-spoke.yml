@@ -137,9 +137,9 @@
     - name: Deploy test pod from bastion registry
       ansible.builtin.shell: |
         oc --kubeconfig {{ spoke_kubeconfig_file.dest }} run {{ bastion_registry_test_pod_name }} \
+          -n bastion-registry-test \
           --image={{ bastion_registry_host }}:{{ bastion_registry_port }}/{{ bastion_registry_test_image_name }}:{{ bastion_registry_test_image_tag }} \
-          --command -- sh -c '{{ bastion_registry_test_command }}' \
-          -n bastion-registry-test
+          --command -- sh -c '{{ bastion_registry_test_command }}'
       register: test_pod_deploy
       changed_when: "'pod/' in test_pod_deploy.stdout"
       failed_when: test_pod_deploy.rc != 0
