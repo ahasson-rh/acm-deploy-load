@@ -111,6 +111,12 @@
 
 - name: Create test pod using bastion registry image
   block:
+    - name: Cleanup any existing test namespace
+      ansible.builtin.shell: |
+        oc --kubeconfig {{ spoke_kubeconfig_file.dest }} delete namespace bastion-registry-test \
+          --ignore-not-found=true
+      changed_when: false
+
     - name: Create test namespace
       ansible.builtin.shell: |
         oc --kubeconfig {{ spoke_kubeconfig_file.dest }} create namespace bastion-registry-test \
@@ -123,11 +129,9 @@
         oc --kubeconfig {{ spoke_kubeconfig_file.dest }} run {{ bastion_registry_test_pod_name }} \
           --image={{ bastion_registry_host }}:{{ bastion_registry_port }}/{{ bastion_registry_test_image_name }}:{{ bastion_registry_test_image_tag }} \
           --command -- sh -c "{{ bastion_registry_test_command }}" \
-          -n bastion-registry-test \
-          --dry-run=client -o json | \
-        oc --kubeconfig {{ spoke_kubeconfig_file.dest }} apply -f -
+          -n bastion-registry-test
       register: test_pod_deploy
-      changed_when: "'created' in test_pod_deploy.stdout"
+      changed_when: "'pod/' in test_pod_deploy.stdout"
 
     - name: Wait for test pod to complete
       ansible.builtin.shell: |
