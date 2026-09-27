@@ -117,9 +117,15 @@
           --ignore-not-found=true
       changed_when: false
 
-    - name: Wait for namespace deletion to complete
-      ansible.builtin.pause:
-        seconds: 2
+    - name: Wait for namespace to be fully deleted
+      ansible.builtin.shell: |
+        oc --kubeconfig {{ spoke_kubeconfig_file.dest }} get namespace bastion-registry-test 2>/dev/null
+      register: ns_check
+      until: ns_check.rc != 0
+      retries: 30
+      delay: 1
+      changed_when: false
+      failed_when: false
 
     - name: Create test namespace
       ansible.builtin.shell: |
@@ -136,16 +142,17 @@
           -n bastion-registry-test
       register: test_pod_deploy
       changed_when: "'pod/' in test_pod_deploy.stdout"
+      failed_when: test_pod_deploy.rc != 0
 
-    - name: Wait for test pod to complete
+    - name: Wait for test pod to be ready
       ansible.builtin.shell: |
         oc --kubeconfig {{ spoke_kubeconfig_file.dest }} get pod {{ bastion_registry_test_pod_name }} \
           -n bastion-registry-test \
           -o jsonpath='{.status.phase}'
       register: pod_status
-      until: pod_status.stdout in ['Succeeded', 'Failed']
-      retries: 30
-      delay: 5
+      until: pod_status.stdout in ['Running', 'Succeeded', 'Failed']
+      retries: 10
+      delay: 1
       changed_when: false
 
     - name: Display test pod logs
