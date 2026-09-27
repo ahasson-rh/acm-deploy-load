@@ -39,7 +39,7 @@
   ansible.builtin.shell: |
     oc --kubeconfig {{ spoke_kubeconfig_file.dest }} get secret/{{ bastion_registry_pull_secret_name }} \
       -n openshift-config \
-      --template='{{index .data ".dockerconfigjson" | base64decode}}' > /tmp/{{ spoke_name }}-global_pull_secret.json
+      -o json | jq -r '.data.".dockerconfigjson"' | base64 -d > /tmp/{{ spoke_name }}-global_pull_secret.json
   changed_when: false
   register: pull_secret_extract
 
