@@ -22,7 +22,7 @@
     oc --kubeconfig {{ spoke_kubeconfig_file.dest }} create configmap {{ bastion_registry_configmap_name }} \
       -n openshift-config \
       --from-file={{ bastion_registry_host }}.{{ bastion_registry_port }}={{ bastion_registry_cert_dir }}/{{ bastion_registry_cert_file }} \
-      --dry-run=client -o yaml | \
+      --dry-run=client -o json | \
     oc --kubeconfig {{ spoke_kubeconfig_file.dest }} apply -f -
   register: configmap_create
   changed_when: "'created' in configmap_create.stdout or 'configured' in configmap_create.stdout"
@@ -114,7 +114,7 @@
     - name: Create test namespace
       ansible.builtin.shell: |
         oc --kubeconfig {{ spoke_kubeconfig_file.dest }} create namespace bastion-registry-test \
-          --dry-run=client -o yaml | \
+          --dry-run=client -o json | \
         oc --kubeconfig {{ spoke_kubeconfig_file.dest }} apply -f -
       changed_when: false
 
@@ -124,7 +124,7 @@
           --image={{ bastion_registry_host }}:{{ bastion_registry_port }}/{{ bastion_registry_test_image_name }}:{{ bastion_registry_test_image_tag }} \
           --command -- sh -c "{{ bastion_registry_test_command }}" \
           -n bastion-registry-test \
-          --dry-run=client -o yaml | \
+          --dry-run=client -o json | \
         oc --kubeconfig {{ spoke_kubeconfig_file.dest }} apply -f -
       register: test_pod_deploy
       changed_when: "'created' in test_pod_deploy.stdout"
