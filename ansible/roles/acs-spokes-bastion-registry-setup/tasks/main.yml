@@ -8,7 +8,6 @@
   ansible.builtin.assert:
     that:
       - bastion_registry_host != ""
-      - bastion_registry_host is ansible.builtin.url
       - bastion_registry_port is defined
       - bastion_registry_port | int > 0
     fail_msg: "bastion_registry_host must be set and bastion_registry_port must be a valid port number when acs_spoke_use_bastion_registry=true"
