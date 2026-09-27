@@ -28,6 +28,8 @@
       tags:
         - registration
     - role: acs-spokes-bastion-registry-setup
+      vars:
+        bastion_registry_host: "{{ ansible_host | default(inventory_hostname) }}"
       tags:
         - bastion-registry
     - role: acs-spokes-sensor-setup
