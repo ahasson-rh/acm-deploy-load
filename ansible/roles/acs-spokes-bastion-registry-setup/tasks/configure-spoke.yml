@@ -2,7 +2,7 @@
 - name: Get spoke kubeconfig secret
   environment:
     KUBECONFIG: "{{ hub_cluster_kubeconfig }}"
-  ansible.builtin.command: |
+  ansible.builtin.shell: |
     oc get secret {{ spoke_name }}-admin-kubeconfig \
       -n {{ spoke_name }} \
       -o jsonpath='{.data.kubeconfig}' | base64 -d
@@ -18,7 +18,7 @@
   register: spoke_kubeconfig_file
 
 - name: Create registry-cas configmap with TLS certificate
-  ansible.builtin.command: |
+  ansible.builtin.shell: |
     oc --kubeconfig {{ spoke_kubeconfig_file.dest }} create configmap {{ bastion_registry_configmap_name }} \
       -n openshift-config \
       --from-file={{ bastion_registry_host }}.{{ bastion_registry_port }}={{ bastion_registry_cert_dir }}/{{ bastion_registry_cert_file }} \
@@ -28,7 +28,7 @@
   changed_when: "'created' in configmap_create.stdout or 'configured' in configmap_create.stdout"
 
 - name: Patch image config to use trusted CA configmap
-  ansible.builtin.command: |
+  ansible.builtin.shell: |
     oc --kubeconfig {{ spoke_kubeconfig_file.dest }} patch image.config.openshift.io/cluster \
       --type=merge \
       -p '{"spec":{"additionalTrustedCA":{"name":"{{ bastion_registry_configmap_name }}"}}}'
@@ -61,7 +61,7 @@
   changed_when: "'updated' in secret_update.stdout"
 
 - name: Wait for machineconfig rollout to complete
-  ansible.builtin.command: |
+  ansible.builtin.shell: |
     oc --kubeconfig {{ spoke_kubeconfig_file.dest }} get nodes -o jsonpath='{.items[0].metadata.name}'
   register: first_node
   changed_when: false
@@ -112,14 +112,14 @@
 - name: Create test pod using bastion registry image
   block:
     - name: Create test namespace
-      ansible.builtin.command: |
+      ansible.builtin.shell: |
         oc --kubeconfig {{ spoke_kubeconfig_file.dest }} create namespace bastion-registry-test \
           --dry-run=client -o yaml | \
         oc --kubeconfig {{ spoke_kubeconfig_file.dest }} apply -f -
       changed_when: false
 
     - name: Deploy test pod from bastion registry
-      ansible.builtin.command: |
+      ansible.builtin.shell: |
         oc --kubeconfig {{ spoke_kubeconfig_file.dest }} run {{ bastion_registry_test_pod_name }} \
           --image={{ bastion_registry_host }}:{{ bastion_registry_port }}/{{ bastion_registry_test_image_name }}:{{ bastion_registry_test_image_tag }} \
           --command -- sh -c "{{ bastion_registry_test_command }}" \
@@ -130,7 +130,7 @@
       changed_when: "'created' in test_pod_deploy.stdout"
 
     - name: Wait for test pod to complete
-      ansible.builtin.command: |
+      ansible.builtin.shell: |
         oc --kubeconfig {{ spoke_kubeconfig_file.dest }} get pod {{ bastion_registry_test_pod_name }} \
           -n bastion-registry-test \
           -o jsonpath='{.status.phase}'
@@ -141,7 +141,7 @@
       changed_when: false
 
     - name: Display test pod logs
-      ansible.builtin.command: |
+      ansible.builtin.shell: |
         oc --kubeconfig {{ spoke_kubeconfig_file.dest }} logs {{ bastion_registry_test_pod_name }} \
           -n bastion-registry-test
       register: pod_logs
@@ -158,7 +158,7 @@
           {% endif %}
 
     - name: Cleanup test pod and namespace
-      ansible.builtin.command: |
+      ansible.builtin.shell: |
         oc --kubeconfig {{ spoke_kubeconfig_file.dest }} delete namespace bastion-registry-test \
           --ignore-not-found=true
       changed_when: false
