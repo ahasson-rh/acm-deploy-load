@@ -79,36 +79,6 @@
   ansible.builtin.pause:
     seconds: 30
 
-- name: Push test image to bastion registry
-  block:
-    - name: Pull test image locally
-      ansible.builtin.command: |
-        podman pull {{ bastion_registry_test_image_source }}
-      changed_when: false
-
-    - name: Tag test image for bastion registry
-      ansible.builtin.command: |
-        podman tag {{ bastion_registry_test_image_source }} \
-          {{ bastion_registry_host }}:{{ bastion_registry_port }}/{{ bastion_registry_test_image_name }}:{{ bastion_registry_test_image_tag }}
-      changed_when: false
-
-    - name: Login to bastion registry with podman
-      ansible.builtin.command: |
-        podman login -u {{ bastion_registry_username }} -p {{ bastion_registry_password }} \
-          {{ bastion_registry_host }}:{{ bastion_registry_port }}
-      changed_when: false
-      no_log: true
-
-    - name: Push test image to bastion registry
-      ansible.builtin.command: |
-        podman push {{ bastion_registry_host }}:{{ bastion_registry_port }}/{{ bastion_registry_test_image_name }}:{{ bastion_registry_test_image_tag }}
-      changed_when: false
-
-  rescue:
-    - name: Log image push failure
-      ansible.builtin.debug:
-        msg: "Warning: Failed to push test image to bastion registry, continuing with test"
-
 - name: Create test pod using bastion registry image
   block:
     - name: Delete any existing test namespace
