@@ -173,7 +173,7 @@
   ansible.builtin.set_fact:
     successfully_configured: "{{ (successfully_configured | default(0) | int) + 1 }}"
 
-- name: Set configuration summary message
+- name: Set spoke configuration summary message
   ansible.builtin.set_fact:
     config_summary_msg: |
       ============================================
