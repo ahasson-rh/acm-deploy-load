@@ -73,7 +73,8 @@
 
     - name: Display setup summary
       ansible.builtin.debug:
-        - "🚀 Bastion registry setup completed"
-        - "✓  Total clusters processed: {{ groups['managed_clusters'] | length }}"
-        - "✓  Successfully configured: {{ successfully_configured | default(0) }}"
+        msg:
+          - "🚀 Bastion registry setup completed"
+          - "✓  Total clusters processed: {{ groups['managed_clusters'] | length }}"
+          - "✓  Successfully configured: {{ successfully_configured | default(0) }}"
 
