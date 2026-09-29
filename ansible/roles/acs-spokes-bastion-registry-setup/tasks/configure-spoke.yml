@@ -21,7 +21,7 @@
   ansible.builtin.shell: |
     oc --kubeconfig {{ spoke_kubeconfig_file.dest }} create configmap {{ bastion_registry_configmap_name }} \
       -n openshift-config \
-      --from-file={{ bastion_registry_host }}.{{ bastion_registry_port }}={{ bastion_registry_cert_dir }}/{{ bastion_registry_cert_file }} \
+      --from-file={{ bastion_registry_host }}..{{ bastion_registry_port }}={{ bastion_registry_cert_dir }}/{{ bastion_registry_cert_file }} \
       --dry-run=client -o json | \
     oc --kubeconfig {{ spoke_kubeconfig_file.dest }} apply -f -
   register: configmap_create
