@@ -136,11 +136,13 @@
     - name: Report test success or failure
       ansible.builtin.debug:
         msg: |
-          Bastion registry test for {{ spoke_name }}:
-          Pod status: {{ pod_status.stdout }}
-          {% if pod_logs.rc == 0 %}
-          Pod logs: {{ pod_logs.stdout }}
-          {% endif %}
+          ============================================
+          Bastion Registry Test: {{ spoke_name }}
+          ============================================
+          Status: {{ pod_status.stdout }}
+          Logs:
+          {{ pod_logs.stdout | indent(2, first=False) }}
+          ============================================
 
     - name: Cleanup test pod and namespace
       ansible.builtin.shell: |
@@ -160,12 +162,18 @@
 - name: Display spoke configuration summary
   ansible.builtin.debug:
     msg: |
-      ✓ {{ spoke_name }}:
-        - TLS certificate: configured
-        - Registry configmap: created
-        - Pull secret: updated
-        - MachineConfig rollout: completed
-        - Test pod: deployed and validated
+      ============================================
+      ✓ Bastion Registry Configuration Complete
+      ============================================
+      Spoke: {{ spoke_name }}
+
+      Setup Steps:
+        ✓ TLS certificate captured and configured
+        ✓ Registry CA ConfigMap created
+        ✓ Pull secret updated with credentials
+        ✓ MachineConfig rollout completed
+        ✓ Test pod deployed and validated
+      ============================================
 
 - name: Cleanup temporary files
   ansible.builtin.file:
