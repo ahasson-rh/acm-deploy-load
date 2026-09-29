@@ -71,16 +71,9 @@
       loop_control:
         loop_var: spoke_name
 
-    - name: Set setup summary message
-      ansible.builtin.set_fact:
-        setup_summary_msg: |
-          ============================================
-          Bastion registry setup completed
-          Total clusters processed: {{ groups['managed_clusters'] | length }}
-          Successfully configured: {{ successfully_configured | default(0) }}
-          ============================================
-
     - name: Display setup summary
       ansible.builtin.debug:
-        msg: "{{ setup_summary_msg.split('\n') }}"
+        - "🚀 Bastion registry setup completed"
+        - "✓  Total clusters processed: {{ groups['managed_clusters'] | length }}"
+        - "✓  Successfully configured: {{ successfully_configured | default(0) }}"
 

@@ -77,7 +77,7 @@
 
 - name: Wait additional time for nodes to be ready
   ansible.builtin.pause:
-    seconds: 30
+    seconds: 10
 
 - name: Create test pod using bastion registry image
   block:
