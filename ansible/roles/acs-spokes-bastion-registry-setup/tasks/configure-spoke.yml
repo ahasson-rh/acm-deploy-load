@@ -133,7 +133,7 @@
       changed_when: false
       failed_when: false
 
-    - name: Report test success or failure
+    - name: Report test success
       ansible.builtin.debug:
         msg: |
           ============================================
@@ -143,6 +143,10 @@
           Logs:
           {{ pod_logs.stdout | indent(2, first=False) }}
           ============================================
+
+    - name: Set test success flag
+      ansible.builtin.set_fact:
+        "{{ spoke_name }}_test_success": true
 
     - name: Cleanup test pod and namespace
       ansible.builtin.shell: |
@@ -154,6 +158,10 @@
     - name: Log test failure
       ansible.builtin.debug:
         msg: "Warning: Test pod deployment from bastion registry failed for {{ spoke_name }}, but registry setup is complete"
+
+    - name: Set test failure flag
+      ansible.builtin.set_fact:
+        "{{ spoke_name }}_test_success": false
 
 - name: Set success counter
   ansible.builtin.set_fact:
@@ -172,7 +180,11 @@
         ✓ Registry CA ConfigMap created
         ✓ Pull secret updated with credentials
         ✓ MachineConfig rollout completed
+        {% if vars.get(spoke_name + '_test_success', false) %}
         ✓ Test pod deployed and validated
+        {% else %}
+        ⚠ Test pod validation skipped or failed
+        {% endif %}
       ============================================
 
 - name: Cleanup temporary files
