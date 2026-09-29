@@ -134,15 +134,20 @@
       failed_when: false
 
     - name: Report test success
-      ansible.builtin.debug:
-        msg: |
-          ============================================
-          Bastion Registry Test: {{ spoke_name }}
-          ============================================
-          Status: {{ pod_status.stdout }}
-          Logs:
-          {{ pod_logs.stdout | indent(2, first=False) }}
-          ============================================
+      block:
+        - ansible.builtin.debug:
+            msg: "============================================"
+        - ansible.builtin.debug:
+            msg: "Bastion Registry Test: {{ spoke_name }}"
+        - ansible.builtin.debug:
+            msg: "Status: {{ pod_status.stdout }}"
+        - ansible.builtin.debug:
+            msg: "Logs:"
+        - ansible.builtin.debug:
+            msg: "  {{ item }}"
+          loop: "{{ pod_logs.stdout_lines }}"
+        - ansible.builtin.debug:
+            msg: "============================================"
 
     - name: Set test success flag
       ansible.builtin.set_fact:
@@ -168,24 +173,31 @@
     successfully_configured: "{{ (successfully_configured | default(0) | int) + 1 }}"
 
 - name: Display spoke configuration summary
-  ansible.builtin.debug:
-    msg: |
-      ============================================
-      ✓ Bastion Registry Configuration Complete
-      ============================================
-      Spoke: {{ spoke_name }}
-
-      Setup Steps:
-        ✓ TLS certificate captured and configured
-        ✓ Registry CA ConfigMap created
-        ✓ Pull secret updated with credentials
-        ✓ MachineConfig rollout completed
-        {% if vars.get(spoke_name + '_test_success', false) %}
-        ✓ Test pod deployed and validated
-        {% else %}
-        ⚠ Test pod validation skipped or failed
-        {% endif %}
-      ============================================
+  block:
+    - ansible.builtin.debug:
+        msg: "============================================"
+    - ansible.builtin.debug:
+        msg: "✓ Bastion Registry Configuration Complete"
+    - ansible.builtin.debug:
+        msg: "Spoke: {{ spoke_name }}"
+    - ansible.builtin.debug:
+        msg: "Setup Steps:"
+    - ansible.builtin.debug:
+        msg: "  ✓ TLS certificate captured and configured"
+    - ansible.builtin.debug:
+        msg: "  ✓ Registry CA ConfigMap created"
+    - ansible.builtin.debug:
+        msg: "  ✓ Pull secret updated with credentials"
+    - ansible.builtin.debug:
+        msg: "  ✓ MachineConfig rollout completed"
+    - ansible.builtin.debug:
+        msg: "  ✓ Test pod deployed and validated"
+      when: vars.get(spoke_name + '_test_success', false)
+    - ansible.builtin.debug:
+        msg: "  ⚠ Test pod validation skipped or failed"
+      when: not vars.get(spoke_name + '_test_success', false)
+    - ansible.builtin.debug:
+        msg: "============================================"
 
 - name: Cleanup temporary files
   ansible.builtin.file:
