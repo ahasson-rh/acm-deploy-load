@@ -151,7 +151,7 @@
 
     - name: Set test success flag
       ansible.builtin.set_fact:
-        "{{ spoke_name }}_test_success": true
+        "{{ spoke_name | replace('-', '_') }}_test_success": true
 
     - name: Cleanup test pod and namespace
       ansible.builtin.shell: |
@@ -166,7 +166,7 @@
 
     - name: Set test failure flag
       ansible.builtin.set_fact:
-        "{{ spoke_name }}_test_success": false
+        "{{ spoke_name | replace('-', '_') }}_test_success": false
 
 - name: Set success counter
   ansible.builtin.set_fact:
@@ -192,10 +192,10 @@
         msg: "  ✓ MachineConfig rollout completed"
     - ansible.builtin.debug:
         msg: "  ✓ Test pod deployed and validated"
-      when: vars.get(spoke_name + '_test_success', false)
+      when: vars.get(spoke_name | replace('-', '_') + '_test_success', false)
     - ansible.builtin.debug:
         msg: "  ⚠ Test pod validation skipped or failed"
-      when: not vars.get(spoke_name + '_test_success', false)
+      when: not vars.get(spoke_name | replace('-', '_') + '_test_success', false)
     - ansible.builtin.debug:
         msg: "============================================"
 
