@@ -75,6 +75,6 @@
       ansible.builtin.debug:
         msg:
           - "🚀 Bastion registry setup completed"
-          - "✓  Total clusters processed: {{ groups['managed_clusters'] | length }}"
-          - "✓  Successfully configured: {{ successfully_configured | default(0) }}"
+          - "➜  Total clusters processed: {{ groups['managed_clusters'] | length }}"
+          - "➜  Successfully configured: {{ successfully_configured | default(0) }}"
 
