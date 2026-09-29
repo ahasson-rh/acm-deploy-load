@@ -12,7 +12,7 @@ bastion_registry_test_image_source: "quay.io/openshift/origin-cli:latest"
 bastion_registry_test_image_name: "test-bastion-registry"
 bastion_registry_test_image_tag: "latest"
 bastion_registry_test_pod_name: "bastion-registry-test"
-bastion_registry_test_command: "for i in {1..10}; do echo 'Bastion registry test iteration $i'; sleep 1; done"
+bastion_registry_test_command: "for i in {1..10}; do echo Bastion registry test iteration $i; sleep 1; done"
 
 # Paths and directories
 bastion_registry_cert_dir: "/tmp/bastion-registry-certs"
