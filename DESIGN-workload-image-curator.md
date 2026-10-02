@@ -437,22 +437,7 @@ The Go binary can be used as a drop-in replacement:
 - name: Generate workload image list with size distribution
   shell: |
     {{ playbook_dir }}/../scripts/workload-image-curator \
-      --strategy-by-size "{{ acs_image_size_distribution | default('small:10,medium:30,large:10') }}" \
-      --workers {{ acs_mirror_workers | default(5) }} \
-      --target-registry {{ acs_internal_registry }} \
-      --target-org {{ acs_org_name }} \
-      --assume-yes \
-      --stdout --no-files
-  register: operator_images
-```
-
-**With both strategies:**
-```yaml
-- name: Generate workload image list with multi-dimensional distribution
-  shell: |
-    {{ playbook_dir }}/../scripts/workload-image-curator \
-      --strategy-by-size "{{ acs_image_size_distribution | default('small:10,medium:30,large:10') }}" \
-      --strategy-by-layer-count "{{ acs_image_layer_distribution | default('low:15,medium:25,high:10') }}" \
+      --strategy "{{ acs_image_size_distribution | default('small:10,medium:30,large:10') }}" \
       --workers {{ acs_mirror_workers | default(5) }} \
       --target-registry {{ acs_internal_registry }} \
       --target-org {{ acs_org_name }} \
@@ -472,7 +457,7 @@ acs_size_small_threshold: 52428800   # 50MB (optional, uses default if not set)
 acs_size_large_threshold: 209715200  # 200MB (optional, uses default if not set)
 acs_mirror_workers: 5
 acs_rate_limit: 10.0
-acs_skip_existing: true  # Enable pre-run assessment
+acs_ignore_existing: false            # false = use pre-run assessment (default), true = force mirror all
 ```
 
 ## Implementation Phases
@@ -497,9 +482,10 @@ acs_skip_existing: true  # Enable pre-run assessment
 - Exit codes match Python behavior
 
 **Critical Files:**
-- `scripts/operator-image-curator/main.go`
-- `scripts/operator-image-curator/pyxis/client.go`
-- `scripts/operator-image-curator/registry/validator.go` `scripts/operator-image-curator/output/formatter.go`
+- `scripts/workload-image-curator/main.go`
+- `scripts/workload-image-curator/pyxis/client.go`
+- `scripts/workload-image-curator/registry/validator.go`
+- `scripts/workload-image-curator/output/formatter.go`
 
 ### Phase 2: Concurrency & Performance (2 weeks)
 **Goal:** Add parallel processing for speed improvements
@@ -519,9 +505,9 @@ acs_skip_existing: true  # Enable pre-run assessment
 - Graceful shutdown on SIGINT/SIGTERM
 
 **Critical Files:**
-- `scripts/operator-image-curator/downloader/worker_pool.go`
-- `scripts/operator-image-curator/downloader/progress.go`
-- `scripts/operator-image-curator/pyxis/pagination.go`
+- `scripts/workload-image-curator/downloader/worker_pool.go`
+- `scripts/workload-image-curator/downloader/progress.go`
+- `scripts/workload-image-curator/pyxis/pagination.go`
 
 ### Phase 3: Size-Based Categorization (2 weeks)
 **Goal:** Intelligent image selection based on size
@@ -530,20 +516,19 @@ acs_skip_existing: true  # Enable pre-run assessment
 - Size metadata extraction from registry manifests
 - Categorization engine (Small/Medium/Large)
 - Absolute threshold mode (bytes)
-- Percentile threshold mode
 - Distribution strategy configuration
 - Image selection algorithm
 - Unit tests for categorization logic
 
 **Acceptance Criteria:**
 - Accurate size extraction (within 1% of actual)
-- Correct categorization for both threshold modes
+- Correct categorization with default and custom thresholds
 - Distribution strategy enforced
 
 **Critical Files:**
-- `scripts/operator-image-curator/registry/inspector.go`
-- `scripts/operator-image-curator/categorizer/size.go`
-- `scripts/operator-image-curator/categorizer/thresholds.go`
+- `scripts/workload-image-curator/registry/inspector.go`
+- `scripts/workload-image-curator/categorizer/size.go`
+- `scripts/workload-image-curator/categorizer/thresholds.go`
 
 ### Phase 4: Registry Pre-Assessment (1 week)
 **Goal:** Skip redundant downloads, optimize workflow
@@ -562,9 +547,9 @@ acs_skip_existing: true  # Enable pre-run assessment
 - Exits early when no downloads needed
 
 **Critical Files:**
-- `scripts/operator-image-curator/registry/mirror.go`
-- `scripts/operator-image-curator/strategy/planner.go`
-- `scripts/operator-image-curator/strategy/selector.go`
+- `scripts/workload-image-curator/registry/mirror.go`
+- `scripts/workload-image-curator/strategy/planner.go`
+- `scripts/workload-image-curator/strategy/selector.go`
 
 ### Phase 5: Hardening & Documentation (2 weeks)
 **Goal:** Production readiness and team enablement
@@ -593,7 +578,6 @@ acs_skip_existing: true  # Enable pre-run assessment
 - Custom validation hooks
 - Prometheus metrics export
 - Resume capability (checkpoint/restart)
-- Dry-run mode
 - Container image packaging (UBI-based)
 
 ## Build & Installation
@@ -690,8 +674,8 @@ ansible-playbook -i inventory/cloud30.local curate-images-for-acs-testing.yml \
 ## Files to Update
 
 **New files:**
-- `scripts/operator-image-curator/` - All Go source code
-- `DESIGN-operator-image-curator.md` - This document
+- `scripts/workload-image-curator/` - All Go source code
+- `DESIGN-workload-image-curator.md` - This document
 
 **Files to update (Phase 5):**
 - `ansible/roles/operator-container-images-curator/tasks/main.yml` - Update to use Go binary
