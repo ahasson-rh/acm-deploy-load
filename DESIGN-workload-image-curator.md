@@ -462,7 +462,7 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 
 ## Implementation Phases
 
-### Phase 1: Core Functionality (3 weeks)
+### Phase 1: Core Functionality
 **Goal:** Feature parity with Python implementation
 
 **Deliverables:**
@@ -487,7 +487,7 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 - `scripts/workload-image-curator/registry/validator.go`
 - `scripts/workload-image-curator/output/formatter.go`
 
-### Phase 2: Concurrency & Performance (2 weeks)
+### Phase 2: Concurrency & Performance
 **Goal:** Add parallel processing for speed improvements
 
 **Deliverables:**
@@ -509,7 +509,7 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 - `scripts/workload-image-curator/downloader/progress.go`
 - `scripts/workload-image-curator/pyxis/pagination.go`
 
-### Phase 3: Size-Based Categorization (2 weeks)
+### Phase 3: Size-Based Categorization
 **Goal:** Intelligent image selection based on size
 
 **Deliverables:**
@@ -530,7 +530,7 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 - `scripts/workload-image-curator/categorizer/size.go`
 - `scripts/workload-image-curator/categorizer/thresholds.go`
 
-### Phase 4: Registry Pre-Assessment (1 week)
+### Phase 4: Registry Pre-Assessment
 **Goal:** Skip redundant downloads, optimize workflow
 
 **Deliverables:**
@@ -551,7 +551,7 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 - `scripts/workload-image-curator/strategy/planner.go`
 - `scripts/workload-image-curator/strategy/selector.go`
 
-### Phase 5: Hardening & Documentation (2 weeks)
+### Phase 5: Hardening & Documentation
 **Goal:** Production readiness and team enablement
 
 **Deliverables:**
