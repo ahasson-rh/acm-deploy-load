@@ -2,8 +2,10 @@ package pyxis
 
 // Package represents an operator package from Pyxis API
 type Package struct {
-	PackageName string `json:"package_name"`
+	Name        string `json:"package_name"`
 	ID          string `json:"_id"`
+	Association string `json:"association"`
+	Source      string `json:"source"`
 }
 
 // PackageResponse is the API response for packages endpoint
@@ -29,8 +31,10 @@ type Bundle struct {
 
 // RelatedImage represents related image in bundle
 type RelatedImage struct {
-	Digest string `json:"digest"`
-	Image  string `json:"image"`
+	Digest     string `json:"digest"`
+	Image      string `json:"image"`
+	ImageSize  int64  `json:"image_size"`
+	LayerCount int    `json:"layer_count"`
 }
 
 // BundleResponse is the API response for bundles endpoint

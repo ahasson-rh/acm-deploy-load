@@ -41,7 +41,11 @@ func (c *Client) FetchPackages(ctx context.Context, page int, pageSize int) (*Pa
 	params.Set("page_size", fmt.Sprintf("%d", pageSize))
 
 	url := fmt.Sprintf("%s/operators/packages?%s", c.baseURL, params.Encode())
-	return c.doWithRetry(ctx, url, &PackageResponse{})
+	result, err := c.doWithRetry(ctx, url, &PackageResponse{})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*PackageResponse), nil
 }
 
 // FetchBundles fetches bundles for an operator package
@@ -51,7 +55,11 @@ func (c *Client) FetchBundles(ctx context.Context, packageName string, pageSize 
 	params.Set("page_size", fmt.Sprintf("%d", pageSize))
 
 	url := fmt.Sprintf("%s/operators/bundles?%s", c.baseURL, params.Encode())
-	return c.doWithRetry(ctx, url, &BundleResponse{})
+	result, err := c.doWithRetry(ctx, url, &BundleResponse{})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*BundleResponse), nil
 }
 
 // doWithRetry executes a request with exponential backoff retry logic
@@ -72,7 +80,17 @@ func (c *Client) doWithRetry(ctx context.Context, url string, v interface{}) (in
 			}
 		}
 
-		resp, err := c.httpClient.Get(url)
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		// Add headers matching Python implementation
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("User-Agent", "workload-image-curator/1.0")
+
+		resp, err := c.httpClient.Do(req)
 		if err != nil {
 			lastErr = err
 			continue

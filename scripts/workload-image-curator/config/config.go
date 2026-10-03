@@ -1,7 +1,10 @@
 package config
 
 import (
+	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/acm-deploy-load/workload-image-curator/models"
 	"github.com/spf13/cobra"
@@ -44,8 +47,8 @@ type Config struct {
 	Verbose      bool
 	Quiet        bool
 
-	// Pyxis API
-	PyxisBaseURL string
+	// Source Registry API
+	SourceRegistryURL string
 }
 
 // LoadFromFlags loads configuration from cobra command flags
@@ -59,13 +62,9 @@ func LoadFromFlags(cmd *cobra.Command) (*Config, error) {
 		InspectWorkers: 10,
 		RateLimit:      10.0,
 		ValidationTimeout: 8,
-		PyxisBaseURL: os.Getenv("PYXIS_BASE_URL"),
+		SourceRegistryURL: os.Getenv("SOURCE_REGISTRY_URL"),
 	}
 
-	// Set defaults for Pyxis URL
-	if cfg.PyxisBaseURL == "" {
-		cfg.PyxisBaseURL = "https://catalog.redhat.com/api/containers/v1"
-	}
 
 	// Parse flags from command
 	var err error
@@ -132,6 +131,15 @@ func LoadFromFlags(cmd *cobra.Command) (*Config, error) {
 	cfg.Verbose, _ = cmd.Flags().GetBool("verbose")
 	cfg.Quiet, _ = cmd.Flags().GetBool("quiet")
 
+	// Source Registry API URL
+	if val, err := cmd.Flags().GetString("source-registry-url"); err == nil && val != "" {
+		cfg.SourceRegistryURL = val
+	}
+
+	if cfg.SourceRegistryURL == "" {
+		cfg.SourceRegistryURL = "https://catalog.redhat.com/api/containers/v1"
+	}
+
 	return cfg, err
 }
 
@@ -162,12 +170,30 @@ func parseStrategy(count int, strategy string) *models.SelectionStrategy {
 
 // parseDistribution parses "small:X,medium:Y,large:Z" format
 func parseDistribution(s string, small, medium, large *int) (bool, error) {
-	// Simple parsing - can be enhanced with regex
-	// For now, just basic parsing
 	parts := make(map[string]int)
 
-	// TODO: Implement proper parsing with validation
-	// This is placeholder - will be replaced with robust parsing
+	// Split by comma
+	pairs := strings.Split(s, ",")
+	for _, pair := range pairs {
+		pair = strings.TrimSpace(pair)
+		if pair == "" {
+			continue
+		}
+
+		// Split by colon
+		kv := strings.Split(pair, ":")
+		if len(kv) != 2 {
+			return false, fmt.Errorf("invalid distribution format: %s (expected 'key:value')", pair)
+		}
+
+		key := strings.TrimSpace(kv[0])
+		val, err := strconv.Atoi(strings.TrimSpace(kv[1]))
+		if err != nil {
+			return false, fmt.Errorf("invalid count for %s: %v", key, err)
+		}
+
+		parts[key] = val
+	}
 
 	if val, ok := parts["small"]; ok {
 		*small = val
