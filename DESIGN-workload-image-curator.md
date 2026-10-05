@@ -109,7 +109,7 @@ After building, the binary is stored in `scripts/workload-image-curator` for tes
 
 5. Mirror Phase (5 parallel workers, configurable, skipped in --dry-run)
    ├─ Each worker executes `skopeo copy` to mirror from source (quay.io) to target registry
-   ├─ Command: `skopeo copy docker://quay.io/repo/image@sha256:digest docker://target-registry/org/image@sha256:digest`
+   ├─ Command: `skopeo copy docker://quay.io/repo/image@sha256:digest docker://dest-registry/org/image@sha256:digest`
    ├─ Retry logic: exponential backoff, max 3 attempts
    ├─ Rate limiting via token bucket (default: 10 req/s collectively)
    ├─ Real-time progress reporting to stderr
@@ -191,8 +191,8 @@ workload-image-curator \
 # Dry run: Only fetch metadata, skip validation and mirroring
 workload-image-curator \
   --strategy "small:10,medium:30,large:10" \
-  --target-registry bastion:5000 \
-  --target-org operator-containers \
+  --dest-registry bastion:5000 \
+  --dest-org operator-containers \
   --dry-run \
   --stdout
   # Output: What would be selected, but no HTTP checks to source registry or skopeo calls
@@ -462,8 +462,20 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 
 ## Implementation Phases
 
+### Phase Requirements
+
+**For each phase:**
+- Implementation summary must be written to `scripts/workload-image-curator/docs/phase{N}-testing-guide.md`
+- Summary should be concise (no detailed code changes, focus on what changed and why)
+- Include testing procedures, acceptance criteria verification, and known limitations
+
+---
+
 ### Phase 1: Core Functionality
 **Goal:** Feature parity with Python implementation
+
+**Documentation:**
+- [x] Testing guide: `scripts/workload-image-curator/docs/phase1-testing-guide.md`
 
 **Deliverables:**
 - [x] Go module initialization
@@ -490,14 +502,18 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 ### Phase 2: Concurrency & Performance
 **Goal:** Add parallel processing for speed improvements
 
+**Documentation:**
+- [x] Testing guide: `scripts/workload-image-curator/docs/phase2-testing-guide.md`
+
 **Deliverables:**
-- [ ] Worker pool for API queries (10 concurrent)
-- [ ] Worker pool for image inspection (10 concurrent)
+- [x] Worker pool for API queries (10 concurrent)
+- [x] Worker pool for image inspection (10 concurrent)
 - [ ] Worker pool for downloads (5 concurrent, configurable)
-- [ ] Rate limiting (token bucket)
-- [ ] Progress reporting (real-time, stderr)
-- [ ] Cancellation support (Ctrl+C graceful shutdown)
+- [x] Rate limiting (token bucket)
+- [x] Progress reporting for API and inspection workers (real-time, stderr with adaptive frequency)
+- [x] Cancellation support (Ctrl+C graceful shutdown)
 - [ ] Performance benchmarks vs Python
+- [ ] Progress reporting for download workers (concurrent skopeo copy tracking)
 
 **Acceptance Criteria:**
 - 5-10x faster than Python for 50+ images
@@ -511,6 +527,9 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 
 ### Phase 3: Size-Based Categorization
 **Goal:** Intelligent image selection based on size
+
+**Documentation:**
+- [ ] Testing guide: `scripts/workload-image-curator/docs/phase3-testing-guide.md`
 
 **Deliverables:**
 - [ ] Size metadata extraction from registry manifests
@@ -533,6 +552,9 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 ### Phase 4: Registry Pre-Assessment
 **Goal:** Skip redundant downloads, optimize workflow
 
+**Documentation:**
+- [ ] Testing guide: `scripts/workload-image-curator/docs/phase4-testing-guide.md`
+
 **Deliverables:**
 - [ ] Target registry inspection (digest lookup)
 - [ ] Existing image categorization
@@ -553,6 +575,9 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 
 ### Phase 5: Hardening & Documentation
 **Goal:** Production readiness and team enablement
+
+**Documentation:**
+- [ ] Testing guide: `scripts/workload-image-curator/docs/phase5-testing-guide.md`
 
 **Deliverables:**
 - [ ] Comprehensive error handling

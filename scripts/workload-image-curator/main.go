@@ -3,8 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/acm-deploy-load/workload-image-curator/config"
 	"github.com/acm-deploy-load/workload-image-curator/models"
@@ -78,12 +84,28 @@ func runCmd(cmd *cobra.Command, args []string) error {
 		logf("Target count: %d", cfg.Strategy.Total())
 	}
 
+	// Setup graceful shutdown on Ctrl+C
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
+
+	// Listen for interrupt signals
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigChan
+		if !cfg.Quiet {
+			logf("Received signal: %v, shutting down gracefully...", sig)
+		}
+		cancel()
+	}()
 
 	// Phase A: Image Selection
 	images, err := selectImages(ctx, cfg)
 	if err != nil {
+		if ctx.Err() == context.Canceled {
+			return fmt.Errorf("image selection cancelled")
+		}
 		return fmt.Errorf("image selection failed: %w", err)
 	}
 
@@ -143,60 +165,103 @@ func selectImages(ctx context.Context, cfg *config.Config) ([]*models.OperatorIm
 	// Create source registry client
 	srcClient := pyxis.NewClient(cfg.SourceRegistryURL)
 
+	// Dynamically fetch packages based on strategy size
+	// Estimate: ~1.5 images per package, so fetch with 20% scale factor plus buffer
+	targetCount := cfg.Strategy.Total()
+	scaleFactor := 1.2   // 20% overhead
+	buffer := 2
+	packageCount := int(math.Ceil(float64(targetCount)*scaleFactor)) + buffer
+	if packageCount > 100 {
+		packageCount = 100 // Cap at 100
+	}
+
 	// Fetch operator packages
-	packages, err := fetchAllPackages(ctx, srcClient, cfg)
+	packages, err := fetchAllPackages(ctx, srcClient, packageCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch packages: %w", err)
 	}
 
 	if !cfg.Quiet {
-		logf("Found %d operator packages", len(packages))
+		logf("Found %d operator packages (fetched %d, need ~%d)", len(packages), packageCount, targetCount)
 	}
 
-	// Fetch bundles and extract images
-	// Phase 1: Stop early when we have enough images
-	targetCount := cfg.Strategy.Total()
+	// Fetch bundles and extract images (concurrent)
 	allImages := make([]*models.OperatorImage, 0, targetCount*2)
+	allImagesMu := sync.Mutex{}
 
+	// Use errgroup for simple concurrent processing
+	var g errgroup.Group
+	g.SetLimit(10) // 10 concurrent bundle fetches
+
+	// Determine logging frequency based on total packages
+	logFrequency := 10
+	if len(packages) <= 10 {
+		logFrequency = 2
+	}
+
+	// Enqueue bundle fetch jobs for each package
 	for i, pkg := range packages {
-		// Early exit if we have enough images
+		// Early exit check
+		allImagesMu.Lock()
 		if len(allImages) >= targetCount*3 {
+			allImagesMu.Unlock()
 			break
 		}
+		allImagesMu.Unlock()
 
-		if i%10 == 0 && !cfg.Quiet {
-			logf("Fetching bundles for package %d/%d (have %d images so far)", i+1, len(packages), len(allImages))
-		}
+		pkgName := pkg.Name // Capture for closure
 
-		bundles, err := srcClient.FetchBundles(ctx, pkg.Name, 10)
-		if err != nil {
-			if !cfg.Quiet {
-				logf("Warning: Failed to fetch bundles for %s: %v", pkg.Name, err)
-			}
-			continue
-		}
-
-		for _, bundle := range bundles.Data {
-			// Use bundle_path as the image (main bundle image)
-			if bundle.BundlePath != "" {
-				// Generate deterministic mock size for categorization
-				// Phase 2 will fetch actual image sizes
-				hash := 0
-				for _, c := range bundle.BundlePath {
-					hash = hash*31 + int(c)
+		g.Go(func() error {
+			bundles, err := srcClient.FetchBundles(ctx, pkgName, 10)
+			if err != nil {
+				if !cfg.Quiet {
+					logf("Warning: Failed to fetch bundles for %s: %v", pkgName, err)
 				}
-				mockSize := int64((hash%300 + 10) * 1000000) // 10-309 MB range
-
-				img := &models.OperatorImage{
-					Operator:   pkg.Name,
-					CSVName:    bundle.CSVName,
-					ShaDigest:  bundle.BundlePathDigest,
-					QuayImage:  bundle.BundlePath,
-					Size:       mockSize,
-					LayerCount: (hash % 20) + 5, // 5-24 layers
-				}
-				allImages = append(allImages, img)
+				return nil // Non-fatal error
 			}
+
+			images := make([]*models.OperatorImage, 0)
+			for _, bundle := range bundles.Data {
+				// Use bundle_path as the image (main bundle image)
+				if bundle.BundlePath != "" {
+					// Generate deterministic mock size for categorization
+					hash := 0
+					for _, c := range bundle.BundlePath {
+						hash = hash*31 + int(c)
+					}
+					mockSize := int64((hash%300 + 10) * 1000000) // 10-309 MB range
+
+					img := &models.OperatorImage{
+						Operator:   pkgName,
+						CSVName:    bundle.CSVName,
+						ShaDigest:  bundle.BundlePathDigest,
+						QuayImage:  bundle.BundlePath,
+						Size:       mockSize,
+						LayerCount: (hash % 20) + 5, // 5-24 layers
+					}
+					images = append(images, img)
+				}
+			}
+
+			allImagesMu.Lock()
+			allImages = append(allImages, images...)
+			allImagesMu.Unlock()
+
+			return nil
+		})
+
+		if i%logFrequency == 0 && !cfg.Quiet {
+			logf("Queued packages for processing: %d/%d", i+1, len(packages))
+		}
+	}
+
+	// Wait for all bundle fetches to complete
+	if err := g.Wait(); err != nil {
+		if ctx.Err() == context.Canceled {
+			return nil, fmt.Errorf("bundle fetch cancelled")
+		}
+		if !cfg.Quiet {
+			logf("Warning: Some bundle fetches failed: %v", err)
 		}
 	}
 
@@ -215,17 +280,32 @@ func selectImages(ctx context.Context, cfg *config.Config) ([]*models.OperatorIm
 		logf("Validating image accessibility (%d images)", len(selected))
 	}
 
-	// Validate image accessibility (Phase 1: sequential, Phase 2: concurrent)
+	// Validate image accessibility (concurrent)
 	if !cfg.DryRun && !cfg.SkipValidation {
 		validator := registry.NewValidator(cfg.ValidationTimeout)
-		for i, img := range selected {
-			accessible := validator.ValidateAccessibility(ctx, img.QuayImage)
-			if !cfg.Quiet && i%10 == 0 {
-				logf("Validated %d/%d images", i, len(selected))
+		var vg errgroup.Group
+		vg.SetLimit(cfg.InspectWorkers)
+
+		for _, img := range selected {
+			image := img // Capture for closure
+
+			vg.Go(func() error {
+				accessible := validator.ValidateAccessibility(ctx, image.QuayImage)
+				if !accessible && !cfg.Quiet {
+					logf("Warning: Image not accessible: %s", image.QuayImage)
+				}
+				return nil
+			})
+		}
+
+		if err := vg.Wait(); err != nil {
+			if ctx.Err() == context.Canceled {
+				return nil, fmt.Errorf("image validation cancelled")
 			}
-			if !accessible && !cfg.Quiet {
-				logf("Warning: Image not accessible: %s", img.QuayImage)
-			}
+		}
+
+		if !cfg.Quiet {
+			logf("Validated %d images", len(selected))
 		}
 	}
 
@@ -233,10 +313,9 @@ func selectImages(ctx context.Context, cfg *config.Config) ([]*models.OperatorIm
 }
 
 // fetchAllPackages fetches operator packages from source registry API
-// Phase 1 only fetches first 50 packages for performance
-func fetchAllPackages(ctx context.Context, client *pyxis.Client, cfg *config.Config) ([]pyxis.Package, error) {
-	// Fetch first page with 50 packages
-	resp, err := client.FetchPackages(ctx, 0, 50)
+func fetchAllPackages(ctx context.Context, client *pyxis.Client, count int) ([]pyxis.Package, error) {
+	// Fetch requested number of packages
+	resp, err := client.FetchPackages(ctx, 0, count)
 	if err != nil {
 		return nil, err
 	}

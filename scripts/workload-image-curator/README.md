@@ -30,8 +30,8 @@ workload-image-curator --strategy "small:10,medium:30,large:10" --stdout
 ```bash
 workload-image-curator \
   --strategy "small:10,medium:30,large:10" \
-  --target-registry bastion:5000 \
-  --target-org operator-containers \
+  --dest-registry bastion:5000 \
+  --dest-org operator-containers \
   --stdout
 ```
 
@@ -39,7 +39,7 @@ workload-image-curator \
 ```bash
 workload-image-curator \
   --strategy "small:10,medium:30,large:10" \
-  --target-registry bastion:5000 \
+  --dest-registry bastion:5000 \
   --dry-run \
   --stdout
 ```
