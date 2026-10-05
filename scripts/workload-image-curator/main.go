@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/acm-deploy-load/workload-image-curator/config"
+	"github.com/acm-deploy-load/workload-image-curator/downloader"
 	"github.com/acm-deploy-load/workload-image-curator/models"
 	"github.com/acm-deploy-load/workload-image-curator/output"
 	"github.com/acm-deploy-load/workload-image-curator/pyxis"
@@ -150,7 +152,71 @@ func runCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if !cfg.Quiet {
-		logf("Phase 1: Image selection and validation completed")
+		logf("Image selection and validation completed")
+	}
+
+	// Phase B: Image Mirroring (unless --dry-run)
+	if !cfg.DryRun && cfg.DestRegistry != "" {
+		if !cfg.Quiet {
+			logf("Phase 2: Starting image mirroring to %s", cfg.DestRegistry)
+		}
+
+		if err := mirrorImages(ctx, cfg, images); err != nil {
+			return fmt.Errorf("image mirroring failed: %w", err)
+		}
+
+		if !cfg.Quiet {
+			logf("Phase 2: Image mirroring completed")
+		}
+	}
+
+	return nil
+}
+
+// mirrorImages mirrors selected images to destination registry using concurrent workers
+func mirrorImages(ctx context.Context, cfg *config.Config, images []*models.OperatorImage) error {
+	if len(images) == 0 {
+		return nil
+	}
+
+	runner := downloader.NewSkopeoRunner(false)
+
+	// Create worker pool for mirroring
+	var g errgroup.Group
+	g.SetLimit(cfg.Workers)
+
+	progress := downloader.NewProgress()
+
+	for _, img := range images {
+		image := img // Capture for closure
+
+		g.Go(func() error {
+			destImage := fmt.Sprintf("%s/%s@%s", cfg.DestRegistry, image.QuayImage[strings.LastIndex(image.QuayImage, "/")+1:strings.Index(image.QuayImage, "@")], image.ShaDigest)
+
+			if err := runner.Copy(image.QuayImage, destImage); err != nil {
+				if !cfg.Quiet {
+					logf("Warning: Failed to mirror %s: %v", image.QuayImage, err)
+				}
+				return nil // Non-fatal error
+			}
+
+			progress.Increment()
+			if !cfg.Quiet && progress.Count()%10 == 0 {
+				logf("Mirrored %d/%d images", progress.Count(), len(images))
+			}
+
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		if ctx.Err() == context.Canceled {
+			return fmt.Errorf("mirroring cancelled")
+		}
+	}
+
+	if !cfg.Quiet {
+		logf("Mirrored %d/%d images successfully", progress.Count(), len(images))
 	}
 
 	return nil

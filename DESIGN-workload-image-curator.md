@@ -508,12 +508,12 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 **Deliverables:**
 - [x] Worker pool for API queries (10 concurrent)
 - [x] Worker pool for image inspection (10 concurrent)
-- [ ] Worker pool for downloads (5 concurrent, configurable)
+- [x] Worker pool for downloads (5 concurrent, configurable via --workers flag)
 - [x] Rate limiting (token bucket)
-- [x] Progress reporting for API and inspection workers (real-time, stderr with adaptive frequency)
+- [x] Progress reporting for API, inspection, and download workers (real-time, stderr with adaptive frequency)
 - [x] Cancellation support (Ctrl+C graceful shutdown)
 - [ ] Performance benchmarks vs Python
-- [ ] Progress reporting for download workers (concurrent skopeo copy tracking)
+- [x] Skopeo wrapper with error handling and fallbacks
 
 **Acceptance Criteria:**
 - 5-10x faster than Python for 50+ images
