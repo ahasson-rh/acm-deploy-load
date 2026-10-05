@@ -184,8 +184,8 @@ Images are **always mirrored** to target registry using `skopeo copy` (unless `-
 # Full workflow: Fetch + validate + mirror
 workload-image-curator \
   --strategy "small:10,medium:30,large:10" \
-  --target-registry bastion:5000 \
-  --target-org operator-containers \
+  --dest-registry bastion:5000 \
+  --dest-org operator-containers \
   --stdout
 
 # Dry run: Only fetch metadata, skip validation and mirroring
@@ -259,8 +259,8 @@ Quiet mode (`-q`) suppresses progress for CI/automation.
 --inspect-workers INT        Inspection workers (default: 10)
 
 # Registry & Mirroring
---target-registry STRING     Target registry (required for mirroring phase)
---target-org STRING          Target organization/namespace in target registry
+--dest-registry STRING       Destination registry for mirroring (required for mirroring phase)
+--dest-org STRING            Destination organization/namespace
 --pull-secret FILE           Pull secret path (default: /opt/registry/pull-secret-bastion.txt)
 --ignore-existing            Ignore existing images in target, force mirror all (skip pre-run assessment)
 --dry-run                    Fetch metadata only, skip validation checks and mirroring (no HTTP/skopeo calls)
@@ -342,8 +342,8 @@ workload-image-curator -c 50 --stdout --output-prefix "test-run"
 **With pre-assessment:**
 ```bash
 workload-image-curator \
-  --target-registry bastion.example.com:5000 \
-  --target-org operator-containers \
+  --dest-registry bastion.example.com:5000 \
+  --dest-org operator-containers \
   --strategy "small:20,medium:20,large:10"
 ```
 
@@ -439,8 +439,8 @@ The Go binary can be used as a drop-in replacement:
     {{ playbook_dir }}/../scripts/workload-image-curator \
       --strategy "{{ acs_image_size_distribution | default('small:10,medium:30,large:10') }}" \
       --workers {{ acs_mirror_workers | default(5) }} \
-      --target-registry {{ acs_internal_registry }} \
-      --target-org {{ acs_org_name }} \
+      --dest-registry {{ acs_internal_registry }} \
+      --dest-org {{ acs_org_name }} \
       --assume-yes \
       --stdout --no-files
   register: operator_images
@@ -661,8 +661,8 @@ operator-image-curator \
   --output-prefix test-run
 
 # 3. Pre-assessment (run twice)
-operator-image-curator --strategy "small:5,medium:5,large:0" --target-registry bastion:5000
-operator-image-curator --strategy "small:5,medium:5,large:0" --target-registry bastion:5000
+operator-image-curator --strategy "small:5,medium:5,large:0" --dest-registry bastion:5000
+operator-image-curator --strategy "small:5,medium:5,large:0" --dest-registry bastion:5000
 # Second run should detect existing images
 
 # 4. Ansible integration

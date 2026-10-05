@@ -34,8 +34,8 @@ func init() {
 	rootCmd.Flags().Int64("size-large-threshold", 209715200, "Medium/large boundary in bytes (default: 200MB)")
 
 	// Registry & mirroring
-	rootCmd.Flags().String("target-registry", "", "Target registry for mirroring")
-	rootCmd.Flags().String("target-org", "", "Target organization/namespace")
+	rootCmd.Flags().String("dest-registry", "", "Destination registry for mirroring")
+	rootCmd.Flags().String("dest-org", "", "Destination organization/namespace")
 	rootCmd.Flags().String("pull-secret", "/opt/registry/pull-secret-bastion.txt", "Pull secret file path")
 	rootCmd.Flags().Bool("ignore-existing", false, "Force mirror all, skip pre-run assessment")
 	rootCmd.Flags().Bool("dry-run", false, "Fetch metadata only, skip validation and mirroring")

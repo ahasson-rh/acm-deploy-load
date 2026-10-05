@@ -19,9 +19,9 @@ type Config struct {
 	SmallThreshold int64
 	LargeThreshold int64
 
-	// Registry
-	TargetRegistry string
-	TargetOrg      string
+	// Destination Registry
+	DestRegistry string
+	DestOrg      string
 	PullSecretPath string
 
 	// Mirroring
@@ -83,12 +83,12 @@ func LoadFromFlags(cmd *cobra.Command) (*Config, error) {
 		cfg.LargeThreshold = val
 	}
 
-	// Registry
-	if val, err := cmd.Flags().GetString("target-registry"); err == nil && val != "" {
-		cfg.TargetRegistry = val
+	// Destination Registry
+	if val, err := cmd.Flags().GetString("dest-registry"); err == nil && val != "" {
+		cfg.DestRegistry = val
 	}
-	if val, err := cmd.Flags().GetString("target-org"); err == nil && val != "" {
-		cfg.TargetOrg = val
+	if val, err := cmd.Flags().GetString("dest-org"); err == nil && val != "" {
+		cfg.DestOrg = val
 	}
 	if val, err := cmd.Flags().GetString("pull-secret"); err == nil && val != "" {
 		cfg.PullSecretPath = val
