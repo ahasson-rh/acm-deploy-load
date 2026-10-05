@@ -158,7 +158,7 @@ func runCmd(cmd *cobra.Command, args []string) error {
 	// Phase B: Image Mirroring (unless --dry-run)
 	if !cfg.DryRun && cfg.DestRegistry != "" {
 		if !cfg.Quiet {
-			logf("Phase 2: Starting image mirroring to %s", cfg.DestRegistry)
+			logf("Starting image mirroring to %s", cfg.DestRegistry)
 		}
 
 		if err := mirrorImages(ctx, cfg, images); err != nil {
@@ -166,7 +166,7 @@ func runCmd(cmd *cobra.Command, args []string) error {
 		}
 
 		if !cfg.Quiet {
-			logf("Phase 2: Image mirroring completed")
+			logf("Image mirroring completed")
 		}
 	}
 
@@ -181,28 +181,44 @@ func mirrorImages(ctx context.Context, cfg *config.Config, images []*models.Oper
 
 	runner := downloader.NewSkopeoRunner(false)
 
-	// Create worker pool for mirroring
+	// Create worker pool for mirroring with per-worker progress tracking
 	var g errgroup.Group
 	g.SetLimit(cfg.Workers)
 
 	progress := downloader.NewProgress()
+	workerProgress := downloader.NewWorkerProgressTracker(len(images), cfg.Workers)
+
+	// Track which worker is processing which image
+	workerCounter := make(chan int, cfg.Workers)
+	for i := 1; i <= cfg.Workers; i++ {
+		workerCounter <- i
+	}
 
 	for _, img := range images {
 		image := img // Capture for closure
 
 		g.Go(func() error {
+			workerID := <-workerCounter
+			defer func() { workerCounter <- workerID }()
+
+			workerProgress.UpdateWorkerImage(workerID, image.QuayImage)
+
 			destImage := fmt.Sprintf("%s/%s@%s", cfg.DestRegistry, image.QuayImage[strings.LastIndex(image.QuayImage, "/")+1:strings.Index(image.QuayImage, "@")], image.ShaDigest)
 
 			if err := runner.Copy(image.QuayImage, destImage); err != nil {
 				if !cfg.Quiet {
 					logf("Warning: Failed to mirror %s: %v", image.QuayImage, err)
 				}
+				workerProgress.RecordFailure(workerID)
 				return nil // Non-fatal error
 			}
 
+			workerProgress.RecordSuccess(workerID)
 			progress.Increment()
+
+			// Log summary every 10 images
 			if !cfg.Quiet && progress.Count()%10 == 0 {
-				logf("Mirrored %d/%d images", progress.Count(), len(images))
+				logf("Mirror progress: %s", workerProgress.Summary())
 			}
 
 			return nil
@@ -216,7 +232,7 @@ func mirrorImages(ctx context.Context, cfg *config.Config, images []*models.Oper
 	}
 
 	if !cfg.Quiet {
-		logf("Mirrored %d/%d images successfully", progress.Count(), len(images))
+		logf("Mirror complete: %s", workerProgress.Summary())
 	}
 
 	return nil

@@ -510,7 +510,8 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 - [x] Worker pool for image inspection (10 concurrent)
 - [x] Worker pool for downloads (5 concurrent, configurable via --workers flag)
 - [x] Rate limiting (token bucket)
-- [x] Progress reporting for API, inspection, and download workers (real-time, stderr with adaptive frequency)
+- [x] Progress reporting for API and inspection workers (real-time, stderr with adaptive frequency)
+- [x] Per-worker progress reporting for download goroutines (track each worker's image/status)
 - [x] Cancellation support (Ctrl+C graceful shutdown)
 - [ ] Performance benchmarks vs Python
 - [x] Skopeo wrapper with error handling and fallbacks

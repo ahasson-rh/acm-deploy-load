@@ -10,9 +10,11 @@ Phase 2 implements concurrent processing to dramatically improve performance. Th
 
 - ✅ **Concurrent bundle fetching** — 10 concurrent goroutines fetch operator bundles in parallel
 - ✅ **Concurrent image validation** — Configurable inspection workers (default 10) validate image accessibility in parallel
+- ✅ **Concurrent image mirroring** — 5 concurrent skopeo workers mirror images to destination registry
+- ✅ **Per-worker progress tracking** — Real-time stats per worker (success, failure, current image, rate)
 - ✅ **Rate limiting** — Token bucket algorithm controls request pace (default 10 req/s)
 - ✅ **Graceful cancellation** — Ctrl+C (SIGINT/SIGTERM) triggers clean shutdown without orphaned goroutines
-- ✅ **Progress reporting** — Real-time logging to stderr (adaptive frequency)
+- ✅ **Progress reporting** — Aggregate summary shows [total/target] Success:X | Failed:Y | Active:Z | Rate:X.XX img/s
 - ✅ **No race conditions** — Verified with Go's `-race` detector
 - ✅ **Performance optimization** — Dynamic package fetching based on target count
 
@@ -80,24 +82,67 @@ for _, img := range selected {
 vg.Wait()
 ```
 
-### 3. Dynamic Package Fetching
+### 3. Concurrent Image Mirroring (NEW in Phase 2)
 
-**Before (Phase 1):**
+**Implementation:**
 ```go
-// Always fetched 50 packages, wasteful for small requests
-packages, err := fetchAllPackages(ctx, srcClient, cfg)
-```
+// Concurrent: uses errgroup with SetLimit(cfg.Workers) for skopeo copy
+var g errgroup.Group
+g.SetLimit(cfg.Workers)  // Default 5 concurrent workers
 
-**After (Phase 2):**
-```go
-// Calculates packages dynamically: ceil(targetCount * 1.2) + 2
-targetCount := cfg.Strategy.Total()
-packageCount := int(math.Ceil(float64(targetCount)*1.2)) + 2
-if packageCount > 100 {
-    packageCount = 100  // Cap at 100
+workerProgress := downloader.NewWorkerProgressTracker(len(images), cfg.Workers)
+
+for _, img := range images {
+    image := img
+    g.Go(func() error {
+        workerID := <-workerCounter  // Get assigned worker
+        defer func() { workerCounter <- workerID }()
+        
+        workerProgress.UpdateWorkerImage(workerID, image.QuayImage)
+        
+        // Mirror image via skopeo copy
+        if err := runner.Copy(image.QuayImage, destImage); err != nil {
+            workerProgress.RecordFailure(workerID)
+            return nil  // Non-fatal error
+        }
+        
+        workerProgress.RecordSuccess(workerID)
+        return nil
+    })
 }
-packages, err := fetchAllPackages(ctx, srcClient, packageCount)
+g.Wait()
 ```
+
+**Key Features:**
+- 5 concurrent workers (configurable via `--workers` flag)
+- Per-worker tracking: success/failure counts, current image
+- Non-blocking failures (one failed mirror doesn't stop others)
+- Skopeo wrapper with error handling (`downloader/skopeo.go`)
+
+### 4. Per-Worker Progress Tracking (NEW in Phase 2)
+
+**WorkerProgressTracker** provides real-time per-worker statistics:
+- `UpdateWorkerImage(workerID, imageRef)` — track what each worker is processing
+- `RecordSuccess(workerID)` — increment success counter
+- `RecordFailure(workerID)` — increment failure counter
+- `Summary()` — aggregated stats: `[processed/total] Success:X | Failed:Y | Active:Z | Rate:X.XX img/s`
+- `WorkerStatus(workerID)` — individual worker status
+
+**Sample Output:**
+```
+[12:34:39] Starting image mirroring to localhost:5000
+[12:34:40] Mirror complete: [5/10] Success: 4 | Failed: 1 | Active: 3 | Rate: 0.45 img/s
+[12:34:40] Image mirroring completed
+```
+
+### 5. Dynamic Package Fetching
+
+**Formula:** `ceil(targetCount * 1.2) + 2` with max of 100
+
+**Impact:**
+- 1 image: 4 packages (was 50) → 92% reduction
+- 6 images: 10 packages (was 50) → 80% reduction
+- 30 images: 38 packages (was 50) → 24% reduction
 
 **Impact:**
 - 1 image: 4 packages (was 50) → 92% reduction
@@ -286,15 +331,19 @@ limiter := rate.NewLimiter(rate.Limit(10.0), 1)  // 10 requests/second
 ## Known Limitations
 
 1. **Mock sizes** — Images use deterministic mock sizes based on bundle path hash, not actual registry metadata (Phase 3 will fetch real sizes)
-2. **No concurrent download** — Mirroring phase not yet implemented (Phase 4 will add skopeo copy workers)
-3. **Mock layer counts** — Layer counts also mock-calculated (Phase 3 will fetch real values)
+2. **Mock layer counts** — Layer counts also mock-calculated (Phase 3 will fetch real values)
+3. **Basic destination image naming** — Uses simple extraction of repo name from source (Phase 3+ may add custom naming strategies)
 
 ## Files Modified for Phase 2
 
-- ✅ `main.go` — Concurrent bundle fetching, validation, signal handling, dynamic package calculation
+- ✅ `main.go` — Concurrent bundle fetching, validation, signal handling, dynamic package calculation, concurrent mirroring, per-worker progress tracking
 - ✅ `downloader/worker_pool.go` — Worker pool implementation (created)
 - ✅ `downloader/progress.go` — Progress tracking (created)
 - ✅ `downloader/worker_pool_test.go` — Unit tests (created)
+- ✅ `downloader/skopeo.go` — Skopeo wrapper with error handling (created, NEW)
+- ✅ `downloader/skopeo_test.go` — Skopeo tests (created, NEW)
+- ✅ `downloader/worker_progress.go` — Per-worker progress tracking (created, NEW)
+- ✅ `downloader/worker_progress_test.go` — Per-worker progress tests (created, NEW)
 
 ## What's Next (Phase 3)
 
@@ -309,10 +358,14 @@ See `DESIGN-workload-image-curator.md` for full Phase 3 specification.
 ## Verification Checklist
 
 - ✅ Builds without warnings
-- ✅ All unit tests pass
-- ✅ No race conditions detected
+- ✅ All unit tests pass (bundle fetching, validation, mirroring, worker progress)
+- ✅ No race conditions detected (verified with `-race` flag)
 - ✅ Faster than Phase 1 (2.5x for small requests)
-- ✅ Graceful shutdown works
-- ✅ Progress messages clear and informative
+- ✅ Graceful shutdown works (Ctrl+C cancellation)
+- ✅ Progress messages clear and informative (per-worker and aggregate)
 - ✅ Works with all CLI flag combinations
+- ✅ Works with and without `--dest-registry` (optional mirroring)
+- ✅ Works with and without `--dry-run` (skip phase B)
 - ✅ Output format unchanged from Phase 1
+- ✅ Per-worker progress tracking accurate
+- ✅ Download worker pool with configurable concurrency
