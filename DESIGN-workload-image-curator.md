@@ -466,15 +466,15 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 **Goal:** Feature parity with Python implementation
 
 **Deliverables:**
-- Go module initialization
-- Pyxis API client with retry logic
-- Image validation (skopeo + HTTP fallback)
-- Sequential processing workflow
-- JSON + TXT output (exact Python format)
-- Environment variable support
-- CLI flags matching Python
-- Compatibility tests
-- README with installation and usage
+- [x] Go module initialization
+- [x] Pyxis API client with retry logic
+- [x] Image validation (skopeo + HTTP fallback)
+- [x] Sequential processing workflow
+- [x] JSON + TXT output (exact Python format)
+- [x] Environment variable support
+- [x] CLI flags matching Python
+- [x] Compatibility tests
+- [x] README with installation and usage
 
 **Acceptance Criteria:**
 - Produces identical output to Python for same inputs
@@ -491,13 +491,13 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 **Goal:** Add parallel processing for speed improvements
 
 **Deliverables:**
-- Worker pool for API queries (10 concurrent)
-- Worker pool for image inspection (10 concurrent)
-- Worker pool for downloads (5 concurrent, configurable)
-- Rate limiting (token bucket)
-- Progress reporting (real-time, stderr)
-- Cancellation support (Ctrl+C graceful shutdown)
-- Performance benchmarks vs Python
+- [ ] Worker pool for API queries (10 concurrent)
+- [ ] Worker pool for image inspection (10 concurrent)
+- [ ] Worker pool for downloads (5 concurrent, configurable)
+- [ ] Rate limiting (token bucket)
+- [ ] Progress reporting (real-time, stderr)
+- [ ] Cancellation support (Ctrl+C graceful shutdown)
+- [ ] Performance benchmarks vs Python
 
 **Acceptance Criteria:**
 - 5-10x faster than Python for 50+ images
@@ -513,12 +513,12 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 **Goal:** Intelligent image selection based on size
 
 **Deliverables:**
-- Size metadata extraction from registry manifests
-- Categorization engine (Small/Medium/Large)
-- Absolute threshold mode (bytes)
-- Distribution strategy configuration
-- Image selection algorithm
-- Unit tests for categorization logic
+- [ ] Size metadata extraction from registry manifests
+- [ ] Categorization engine (Small/Medium/Large)
+- [ ] Absolute threshold mode (bytes)
+- [ ] Distribution strategy configuration
+- [ ] Image selection algorithm
+- [ ] Unit tests for categorization logic
 
 **Acceptance Criteria:**
 - Accurate size extraction (within 1% of actual)
@@ -534,12 +534,12 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 **Goal:** Skip redundant downloads, optimize workflow
 
 **Deliverables:**
-- Target registry inspection (digest lookup)
-- Existing image categorization
-- Remaining calculation per category
-- Image selection to satisfy remaining strategy
-- Early exit if strategy satisfied
-- Summary report for pre-assessment results
+- [ ] Target registry inspection (digest lookup)
+- [ ] Existing image categorization
+- [ ] Remaining calculation per category
+- [ ] Image selection to satisfy remaining strategy
+- [ ] Early exit if strategy satisfied
+- [ ] Summary report for pre-assessment results
 
 **Acceptance Criteria:**
 - Correctly identifies existing images by digest
@@ -555,15 +555,15 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 **Goal:** Production readiness and team enablement
 
 **Deliverables:**
-- Comprehensive error handling
-- Structured logging (configurable verbosity)
-- Memory optimization
-- Makefile (build, test, install targets)
-- Integration tests (end-to-end)
-- Ansible role update documentation
-- Migration guide (Python → Go)
-- CLI reference documentation
-- Performance tuning guide
+- [ ] Comprehensive error handling
+- [ ] Structured logging (configurable verbosity)
+- [ ] Memory optimization
+- [ ] Makefile (build, test, install targets)
+- [ ] Integration tests (end-to-end)
+- [ ] Ansible role update documentation
+- [ ] Migration guide (Python → Go)
+- [ ] CLI reference documentation
+- [ ] Performance tuning guide
 
 **Acceptance Criteria:**
 - No memory leaks (verified with profiling)
@@ -573,12 +573,12 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 
 ### Phase 6: Advanced Features (Future)
 **Possible enhancements:**
-- Multi-architecture image support
-- Image filtering by labels/annotations
-- Custom validation hooks
-- Prometheus metrics export
-- Resume capability (checkpoint/restart)
-- Container image packaging (UBI-based)
+- [ ] Multi-architecture image support
+- [ ] Image filtering by labels/annotations
+- [ ] Custom validation hooks
+- [ ] Prometheus metrics export
+- [ ] Resume capability (checkpoint/restart)
+- [ ] Container image packaging (UBI-based)
 
 ## Build & Installation
 
