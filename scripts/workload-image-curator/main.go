@@ -355,8 +355,24 @@ func selectImages(ctx context.Context, cfg *config.Config) ([]*models.OperatorIm
 		return nil, fmt.Errorf("no images found in source registry")
 	}
 
+	// Deduplicate images by digest (same image may appear in multiple bundles)
+	uniqueImages := make(map[string]*models.OperatorImage)
+	for _, img := range allImages {
+		if _, exists := uniqueImages[img.ShaDigest]; !exists {
+			uniqueImages[img.ShaDigest] = img
+		}
+	}
+	deduped := make([]*models.OperatorImage, 0, len(uniqueImages))
+	for _, img := range uniqueImages {
+		deduped = append(deduped, img)
+	}
+
+	if !cfg.Quiet {
+		logf("Deduped %d images to %d unique digests", len(allImages), len(deduped))
+	}
+
 	// Select images based on strategy
-	selected := selectByStrategy(allImages, cfg.Strategy)
+	selected := selectByStrategy(deduped, cfg.Strategy)
 
 	if !cfg.Quiet && !cfg.SkipValidation {
 		logf("Validating image accessibility (%d images)", len(selected))
