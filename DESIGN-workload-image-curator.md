@@ -513,7 +513,7 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 - [x] Progress reporting for API and inspection workers (real-time, stderr with adaptive frequency)
 - [x] Per-worker progress reporting for download goroutines (track each worker's image/status)
 - [x] Cancellation support (Ctrl+C graceful shutdown)
-- [ ] Performance benchmarks vs Python
+- [x] Performance benchmarks vs Python
 - [x] Skopeo wrapper with error handling and fallbacks
 
 **Acceptance Criteria:**
@@ -529,9 +529,6 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 ### Phase 3: Size-Based Categorization
 **Goal:** Intelligent image selection based on size
 
-**Documentation:**
-- [ ] Testing guide: `scripts/workload-image-curator/docs/phase3-testing-guide.md`
-
 **Deliverables:**
 - [ ] Size metadata extraction from registry manifests
 - [ ] Categorization engine (Small/Medium/Large)
@@ -539,6 +536,9 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 - [ ] Distribution strategy configuration
 - [ ] Image selection algorithm
 - [ ] Unit tests for categorization logic
+
+**Documentation:**
+- [ ] Testing guide: `scripts/workload-image-curator/docs/phase3-testing-guide.md`
 
 **Acceptance Criteria:**
 - Accurate size extraction (within 1% of actual)
@@ -553,9 +553,6 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 ### Phase 4: Registry Pre-Assessment
 **Goal:** Skip redundant downloads, optimize workflow
 
-**Documentation:**
-- [ ] Testing guide: `scripts/workload-image-curator/docs/phase4-testing-guide.md`
-
 **Deliverables:**
 - [ ] Target registry inspection (digest lookup)
 - [ ] Existing image categorization
@@ -563,6 +560,9 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 - [ ] Image selection to satisfy remaining strategy
 - [ ] Early exit if strategy satisfied
 - [ ] Summary report for pre-assessment results
+
+**Documentation:**
+- [ ] Testing guide: `scripts/workload-image-curator/docs/phase4-testing-guide.md`
 
 **Acceptance Criteria:**
 - Correctly identifies existing images by digest
@@ -577,9 +577,6 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 ### Phase 5: Hardening & Documentation
 **Goal:** Production readiness and team enablement
 
-**Documentation:**
-- [ ] Testing guide: `scripts/workload-image-curator/docs/phase5-testing-guide.md`
-
 **Deliverables:**
 - [ ] Comprehensive error handling
 - [ ] Structured logging (configurable verbosity)
@@ -590,6 +587,9 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 - [ ] Migration guide (Python → Go)
 - [ ] CLI reference documentation
 - [ ] Performance tuning guide
+
+**Documentation:**
+- [ ] Testing guide: `scripts/workload-image-curator/docs/phase5-testing-guide.md`
 
 **Acceptance Criteria:**
 - No memory leaks (verified with profiling)
