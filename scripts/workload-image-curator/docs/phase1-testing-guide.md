@@ -74,8 +74,8 @@ cat /tmp/custom-images.json | jq '.[0]'
 # Dry-run with stdout (no network/validation calls)
 ./workload-image-curator \
   --strategy "small:10,medium:30,large:10" \
-  --target-registry bastion:5000 \
-  --target-org operator-containers \
+  --dest-registry bastion:5000 \
+  --dest-org operator-containers \
   --dry-run \
   --stdout --no-files
 ```
@@ -120,8 +120,8 @@ cat /tmp/custom-images.json | jq '.[0]'
 # With registry (dry-run, no actual mirroring)
 ./workload-image-curator \
   --strategy "small:5,medium:5,large:5" \
-  --target-registry bastion:5000 \
-  --target-org operator-containers \
+  --dest-registry bastion:5000 \
+  --dest-org operator-containers \
   --pull-secret /path/to/secret \
   --dry-run \
   --stdout --no-files
@@ -129,7 +129,7 @@ cat /tmp/custom-images.json | jq '.[0]'
 # With ignore-existing flag
 ./workload-image-curator \
   --strategy "small:5,medium:5,large:5" \
-  --target-registry bastion:5000 \
+  --dest-registry bastion:5000 \
   --ignore-existing \
   --dry-run \
   --stdout --no-files
@@ -137,7 +137,7 @@ cat /tmp/custom-images.json | jq '.[0]'
 # Auto-assume yes
 ./workload-image-curator \
   --strategy "small:5,medium:5,large:5" \
-  --target-registry bastion:5000 \
+  --dest-registry bastion:5000 \
   --assume-yes \
   --dry-run \
   --stdout --no-files
@@ -181,8 +181,8 @@ wc -l phase1-test_*.txt  # Should match image count
   --strategy "small:10,medium:20,large:5" \
   --size-small-threshold 52428800 \
   --size-large-threshold 209715200 \
-  --target-registry bastion:5000 \
-  --target-org operator-containers \
+  --dest-registry bastion:5000 \
+  --dest-org operator-containers \
   --workers 5 \
   --inspect-workers 10 \
   --rate-limit 10.0 \

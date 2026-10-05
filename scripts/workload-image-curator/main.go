@@ -355,11 +355,16 @@ func selectImages(ctx context.Context, cfg *config.Config) ([]*models.OperatorIm
 		return nil, fmt.Errorf("no images found in source registry")
 	}
 
-	// Deduplicate images by digest (same image may appear in multiple bundles)
+	// Deduplicate images by name (same operator may have multiple versions)
 	uniqueImages := make(map[string]*models.OperatorImage)
 	for _, img := range allImages {
-		if _, exists := uniqueImages[img.ShaDigest]; !exists {
-			uniqueImages[img.ShaDigest] = img
+		// Extract image name (before @digest)
+		imageName := img.QuayImage
+		if idx := strings.Index(imageName, "@"); idx > 0 {
+			imageName = imageName[:idx]
+		}
+		if _, exists := uniqueImages[imageName]; !exists {
+			uniqueImages[imageName] = img
 		}
 	}
 	deduped := make([]*models.OperatorImage, 0, len(uniqueImages))
@@ -368,7 +373,7 @@ func selectImages(ctx context.Context, cfg *config.Config) ([]*models.OperatorIm
 	}
 
 	if !cfg.Quiet {
-		logf("Deduped %d images to %d unique digests", len(allImages), len(deduped))
+		logf("Deduped %d images to %d unique names", len(allImages), len(deduped))
 	}
 
 	// Select images based on strategy
