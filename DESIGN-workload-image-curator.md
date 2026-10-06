@@ -530,15 +530,15 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 **Goal:** Intelligent image selection based on size
 
 **Deliverables:**
-- [ ] Size metadata extraction from registry manifests
-- [ ] Categorization engine (Small/Medium/Large)
-- [ ] Absolute threshold mode (bytes)
-- [ ] Distribution strategy configuration
-- [ ] Image selection algorithm
-- [ ] Unit tests for categorization logic
+- [x] Size metadata extraction from registry manifests
+- [x] Categorization engine (Small/Medium/Large)
+- [x] Absolute threshold mode (bytes)
+- [x] Distribution strategy configuration
+- [x] Image selection algorithm
+- [x] Unit tests for categorization logic
 
 **Documentation:**
-- [ ] Testing guide: `scripts/workload-image-curator/docs/phase3-testing-guide.md`
+- [x] Testing guide: `scripts/workload-image-curator/docs/phase3-testing-guide.md`
 
 **Acceptance Criteria:**
 - Accurate size extraction (within 1% of actual)
