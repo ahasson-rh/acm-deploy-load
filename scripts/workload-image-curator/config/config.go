@@ -44,6 +44,7 @@ type Config struct {
 	OutputJSON   string
 	OutputTXT    string
 	OutputPrefix string
+	OutputSize   bool
 	Verbose      bool
 	Quiet        bool
 
@@ -128,6 +129,7 @@ func LoadFromFlags(cmd *cobra.Command) (*Config, error) {
 	if val, err := cmd.Flags().GetString("output-prefix"); err == nil && val != "" {
 		cfg.OutputPrefix = val
 	}
+	cfg.OutputSize, _ = cmd.Flags().GetBool("output-size")
 	cfg.Verbose, _ = cmd.Flags().GetBool("verbose")
 	cfg.Quiet, _ = cmd.Flags().GetBool("quiet")
 

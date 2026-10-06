@@ -13,6 +13,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/acm-deploy-load/workload-image-curator/categorizer"
 	"github.com/acm-deploy-load/workload-image-curator/config"
 	"github.com/acm-deploy-load/workload-image-curator/downloader"
 	"github.com/acm-deploy-load/workload-image-curator/models"
@@ -64,6 +65,7 @@ func init() {
 	rootCmd.Flags().String("output-json", "", "JSON output file path")
 	rootCmd.Flags().String("output-txt", "", "TXT output file path")
 	rootCmd.Flags().String("output-prefix", "deployable_operator_images", "Filename prefix for auto-generated names")
+	rootCmd.Flags().Bool("output-size", false, "Include image size and category in output")
 
 	// API
 	rootCmd.Flags().String("source-registry-url", "", "Source registry API base URL (default: https://catalog.redhat.com/api/containers/v1)")
@@ -120,7 +122,12 @@ func runCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Output: Generate results
-	formatter := output.NewFormatter(cfg.OutputPrefix)
+	var formatter *output.Formatter
+	if cfg.OutputSize {
+		formatter = output.NewFormatterWithSize(cfg.OutputPrefix)
+	} else {
+		formatter = output.NewFormatter(cfg.OutputPrefix)
+	}
 
 	// Write stdout if requested
 	if cfg.Stdout {
@@ -252,6 +259,7 @@ func selectImages(ctx context.Context, cfg *config.Config) ([]*models.OperatorIm
 	targetCount := cfg.Strategy.Total()
 	scaleFactor := 1.2   // 20% overhead
 	buffer := 2
+
 	packageCount := int(math.Ceil(float64(targetCount)*scaleFactor)) + buffer
 	if packageCount > 100 {
 		packageCount = 100 // Cap at 100
@@ -376,8 +384,9 @@ func selectImages(ctx context.Context, cfg *config.Config) ([]*models.OperatorIm
 		logf("Deduped %d images to %d unique names", len(allImages), len(deduped))
 	}
 
-	// Select images based on strategy
-	selected := selectByStrategy(deduped, cfg.Strategy)
+	// Select images based on strategy with proper thresholds
+	thresholds, _ := categorizer.NewThresholds(cfg.SmallThreshold, cfg.LargeThreshold)
+	selected := selectByStrategy(deduped, cfg.Strategy, thresholds)
 
 	if !cfg.Quiet && !cfg.SkipValidation {
 		logf("Validating image accessibility (%d images)", len(selected))
@@ -426,8 +435,8 @@ func fetchAllPackages(ctx context.Context, client *pyxis.Client, count int) ([]p
 	return resp.Data, nil
 }
 
-// selectByStrategy selects images based on selection strategy
-func selectByStrategy(allImages []*models.OperatorImage, strategy *models.SelectionStrategy) []*models.OperatorImage {
+// selectByStrategy selects images based on selection strategy and thresholds
+func selectByStrategy(allImages []*models.OperatorImage, strategy *models.SelectionStrategy, thresholds *categorizer.SizeThresholds) []*models.OperatorImage {
 	if strategy.RandomMode {
 		// Random mode: return first N images (Phase 2 will randomize)
 		count := strategy.Count
@@ -438,26 +447,32 @@ func selectByStrategy(allImages []*models.OperatorImage, strategy *models.Select
 	}
 
 	// Size-based mode: categorize and select by size
-	var small, medium, large []*models.OperatorImage
+	cat := categorizer.NewCategorizer(thresholds)
+	categorized, _ := cat.Categorize(allImages)
 
-	for _, img := range allImages {
-		// Size thresholds are in global config, using defaults from Phase 1
-		smallThreshold := int64(52428800)   // 50MB
-		largeThreshold := int64(209715200)  // 200MB
-
-		if img.Size < smallThreshold {
-			small = append(small, img)
-		} else if img.Size < largeThreshold {
-			medium = append(medium, img)
-		} else {
-			large = append(large, img)
-		}
-	}
-
+	// Select requested counts from each category
 	selected := make([]*models.OperatorImage, 0)
-	selected = append(selected, small[:min(len(small), strategy.SmallCount)]...)
-	selected = append(selected, medium[:min(len(medium), strategy.MediumCount)]...)
-	selected = append(selected, large[:min(len(large), strategy.LargeCount)]...)
+
+	// Small images (already sorted smallest-first by Categorize)
+	count := strategy.SmallCount
+	if count > len(categorized.Small) {
+		count = len(categorized.Small)
+	}
+	selected = append(selected, categorized.Small[:count]...)
+
+	// Medium images (already sorted smallest-first by Categorize)
+	count = strategy.MediumCount
+	if count > len(categorized.Medium) {
+		count = len(categorized.Medium)
+	}
+	selected = append(selected, categorized.Medium[:count]...)
+
+	// Large images (already sorted smallest-first by Categorize)
+	count = strategy.LargeCount
+	if count > len(categorized.Large) {
+		count = len(categorized.Large)
+	}
+	selected = append(selected, categorized.Large[:count]...)
 
 	return selected
 }
