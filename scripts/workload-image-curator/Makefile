@@ -11,7 +11,7 @@ test:
 	$(GO) test -v -race ./...
 
 test-unit:
-	$(GO) test -v -race ./models ./pyxis ./registry ./output ./config
+	$(GO) test -v -race ./models ./pyxis ./registry ./output ./config ./strategy
 
 clean:
 	rm -f $(BINARY)

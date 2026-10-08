@@ -41,7 +41,9 @@ scripts/
       inspector.go                  # Image metadata extraction (size, layers)
       validator.go                  # Accessibility checks (skopeo + HTTP)
       mirror.go                     # Target registry inspection
-      auth.go                       # Pull secret handling
+      inspector_test.go             # Inspector tests
+      validator_test.go             # Validator tests
+      mirror_test.go                # Mirror tests
     
     categorizer/                    # Image categorization
       size.go                       # Size classification logic
@@ -57,6 +59,8 @@ scripts/
     strategy/                       # Download planning
       planner.go                    # Pre-run assessment
       selector.go                   # Image selection algorithm
+      planner_test.go               # Planner tests
+      selector_test.go              # Selector tests
     
     output/                         # Output generation
       formatter.go                  # JSON + TXT formatters
@@ -554,16 +558,16 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 **Goal:** Skip redundant downloads, optimize workflow
 
 **Deliverables:**
-- [ ] Target registry inspection (digest lookup)
-- [ ] Extract size metadata from existing images using Inspector (for categorization)
-- [ ] Existing image categorization by size using extracted metadata
-- [ ] Remaining calculation per category
-- [ ] Image selection to satisfy remaining strategy
-- [ ] Early exit if strategy satisfied
-- [ ] Summary report for pre-assessment results
+- [x] Target registry inspection (digest lookup)
+- [x] Extract size metadata from existing images using Inspector (for categorization)
+- [x] Existing image categorization by size using extracted metadata
+- [x] Remaining calculation per category
+- [x] Image selection to satisfy remaining strategy
+- [x] Early exit if strategy satisfied
+- [x] Summary report for pre-assessment results
 
 **Documentation:**
-- [ ] Testing guide: `scripts/workload-image-curator/docs/phase4-testing-guide.md`
+- [x] Testing guide: `scripts/workload-image-curator/docs/phase4-testing-guide.md`
 
 **Acceptance Criteria:**
 - Correctly identifies existing images by digest

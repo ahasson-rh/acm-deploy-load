@@ -20,6 +20,7 @@ import (
 	"github.com/acm-deploy-load/workload-image-curator/output"
 	"github.com/acm-deploy-load/workload-image-curator/pyxis"
 	"github.com/acm-deploy-load/workload-image-curator/registry"
+	"github.com/acm-deploy-load/workload-image-curator/strategy"
 	"github.com/spf13/cobra"
 )
 
@@ -119,6 +120,20 @@ func runCmd(cmd *cobra.Command, args []string) error {
 
 	if len(images) == 0 {
 		return fmt.Errorf("no images selected")
+	}
+
+	// Phase A.5: Pre-assessment if target registry specified
+	if !cfg.DryRun && cfg.DestRegistry != "" && !cfg.IgnoreExisting {
+		images, err = performPreAssessment(ctx, cfg, images)
+		if err != nil {
+			return fmt.Errorf("pre-assessment failed: %w", err)
+		}
+		if len(images) == 0 {
+			if !cfg.Quiet {
+				logf("Strategy already satisfied, no download needed")
+			}
+			return nil
+		}
 	}
 
 	// Output: Generate results
@@ -493,6 +508,81 @@ func selectionModeName(strategy *models.SelectionStrategy) string {
 	}
 	return fmt.Sprintf("size-based (small:%d, medium:%d, large:%d)",
 		strategy.SmallCount, strategy.MediumCount, strategy.LargeCount)
+}
+
+// performPreAssessment checks target registry for existing images and filters selection
+func performPreAssessment(ctx context.Context, cfg *config.Config, selectedImages []*models.OperatorImage) ([]*models.OperatorImage, error) {
+	if !cfg.Quiet {
+		logf("Performing pre-run assessment of target registry: %s", cfg.DestRegistry)
+	}
+
+	// Create inspector for target registry
+	inspector := registry.NewMirrorInspector(cfg.DestRegistry, cfg.ValidationTimeout)
+
+	// Query target registry for existing images
+	existing, err := inspector.FindExistingImages(ctx, selectedImages)
+	if err != nil {
+		if !cfg.Quiet {
+			logf("Warning: Pre-assessment failed (will proceed with download): %v", err)
+		}
+		return selectedImages, nil // Continue with all selected images on error
+	}
+
+	if !cfg.Quiet {
+		logf("Found %d images already present in target registry", len(existing))
+	}
+
+	// Create planner for strategy-based selection
+	thresholds, _ := categorizer.NewThresholds(cfg.SmallThreshold, cfg.LargeThreshold)
+	planner := strategy.NewPlanner(inspector, thresholds)
+
+	// Perform assessment and selection
+	filtered, assessment := planner.AssessAndSelect(selectedImages, cfg.Strategy, existing)
+
+	// Print assessment report
+	if !cfg.Quiet {
+		printPreAssessmentReport(assessment)
+	}
+
+	// Ask user for confirmation if mirroring is needed
+	if len(filtered) > 0 && !cfg.AssumeYes {
+		fmt.Fprintf(os.Stderr, "\nProceed with download of %d images? (y/n) ", len(filtered))
+		var response string
+		fmt.Scanln(&response)
+		if response != "y" && response != "Y" {
+			return nil, fmt.Errorf("download cancelled by user")
+		}
+	}
+
+	return filtered, nil
+}
+
+// printPreAssessmentReport prints a formatted pre-assessment summary
+func printPreAssessmentReport(assessment *strategy.PreAssessmentResult) {
+	fmt.Fprintf(os.Stderr, "\nPre-run Assessment Report:\n")
+	fmt.Fprintf(os.Stderr, "===========================\n")
+
+	if assessment.ExistingCount > 0 {
+		fmt.Fprintf(os.Stderr, "Already Present: %d images\n", assessment.ExistingCount)
+		for _, cat := range []models.ImageCategory{models.CategorySmall, models.CategoryMedium, models.CategoryLarge} {
+			if count, ok := assessment.ExistingBySize[cat]; ok && count > 0 {
+				fmt.Fprintf(os.Stderr, "  - %s: %d\n", cat, count)
+			}
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "\nRemaining Needed: %d images\n", assessment.SelectedCount)
+	for _, cat := range []models.ImageCategory{models.CategorySmall, models.CategoryMedium, models.CategoryLarge} {
+		if count, ok := assessment.SelectedBySize[cat]; ok && count > 0 {
+			fmt.Fprintf(os.Stderr, "  - %s: %d\n", cat, count)
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "\nTotal Download Size: %s\n", strategy.FormatSize(assessment.TotalDownloadSize))
+
+	if assessment.SkipDownload {
+		fmt.Fprintf(os.Stderr, "\n⚠️  Strategy already satisfied - skipping download\n")
+	}
 }
 
 // logf logs to stderr with timestamp

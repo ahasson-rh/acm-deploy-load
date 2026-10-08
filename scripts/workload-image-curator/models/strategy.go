@@ -16,3 +16,18 @@ func (s *SelectionStrategy) Total() int {
 	}
 	return s.SmallCount + s.MediumCount + s.LargeCount
 }
+
+// Small returns small image target count (for size-based mode)
+func (s *SelectionStrategy) Small() int {
+	return s.SmallCount
+}
+
+// Medium returns medium image target count (for size-based mode)
+func (s *SelectionStrategy) Medium() int {
+	return s.MediumCount
+}
+
+// Large returns large image target count (for size-based mode)
+func (s *SelectionStrategy) Large() int {
+	return s.LargeCount
+}
