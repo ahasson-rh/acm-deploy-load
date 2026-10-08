@@ -555,7 +555,8 @@ acs_ignore_existing: false            # false = use pre-run assessment (default)
 
 **Deliverables:**
 - [ ] Target registry inspection (digest lookup)
-- [ ] Existing image categorization
+- [ ] Extract size metadata from existing images using Inspector (for categorization)
+- [ ] Existing image categorization by size using extracted metadata
 - [ ] Remaining calculation per category
 - [ ] Image selection to satisfy remaining strategy
 - [ ] Early exit if strategy satisfied
